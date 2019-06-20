@@ -27,7 +27,7 @@ async def blink(canvas, row, column, offset_tics, symbol):
             await asyncio.sleep(0)
 
 
-def get_rocket_frames(file):
+def get_rocket_frame(file):
     with open(file, "r") as my_file:
         file_content = my_file.read()
     return file_content
@@ -73,8 +73,8 @@ def main(canvas):
     row_max, col_max = canvas.getmaxyx()
     row, column = row_max/2, col_max/2
     stars = ('+', '*', '.', ':')
-    frame1 = get_rocket_frames('rocket_frame_1.txt')
-    frame2 = get_rocket_frames('rocket_frame_2.txt')
+    frame1 = get_rocket_frame('rocket_frame_1.txt')
+    frame2 = get_rocket_frame('rocket_frame_2.txt')
     coroutines = [
         fire_animation.fire(canvas, row, column+2, rows_speed=-0.003),
         animate_spaceship(canvas, row, column, frame1, frame2, col_max, row_max)
