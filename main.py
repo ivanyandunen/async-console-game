@@ -5,9 +5,9 @@ import fire_animation
 import curses_tools
 
 
-async def blink(canvas, row, column, symbol):
+async def blink(canvas, row, column, offset_tics, symbol):
     while True:
-        for _ in range(random.randint(1, 10000)):
+        for _ in range(offset_tics):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol, curses.A_DIM)
@@ -83,7 +83,9 @@ def main(canvas):
         coroutines.append(blink(
             canvas, random.randint(1, row_max-2),
             random.randint(1, col_max-2),
+            random.randint(1, 10000),
             symbol=random.choice(stars)
+
         ))
     canvas.border()
     curses.curs_set(False)
