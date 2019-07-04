@@ -3,28 +3,32 @@ import curses
 import random
 import fire_animation
 import curses_tools
+import time
+
+
+TIC_TIMEOUT = .1
+
+
+async def sleep(tics):
+    for _ in range(int(tics)):
+        await asyncio.sleep(0)
 
 
 async def blink(canvas, row, column, offset_tics, symbol):
     while True:
-        for _ in range(offset_tics):
-            await asyncio.sleep(0)
+        await sleep(offset_tics)
 
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(20000):
-            await asyncio.sleep(0)
+        await sleep(2)
 
         canvas.addstr(row, column, symbol)
-        for _ in range(3000):
-            await asyncio.sleep(0)
+        await sleep(.3)
 
         canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(5000):
-            await asyncio.sleep(0)
+        await sleep(.5)
 
         canvas.addstr(row, column, symbol)
-        for _ in range(3000):
-            await asyncio.sleep(0)
+        await sleep(.3)
 
 
 def get_rocket_frame(file):
@@ -34,16 +38,22 @@ def get_rocket_frame(file):
 
 
 def run_spaceship(canvas, row, frame1, column, col_max, row_max):
-
-    canvas.nodelay(True)
+    border = 1
     rows_direction, columns_direction, _ = curses_tools.read_controls(canvas)
     frame_rows, frame_cols = curses_tools.get_frame_size(frame1)
 
-    if row + rows_direction + frame_rows < row_max\
-            and row + rows_direction - frame_rows > 0\
-            and column + columns_direction + frame_cols < col_max\
-            and column + columns_direction - frame_cols > 0:
+    if row + rows_direction + frame_rows >= row_max:
+        row = row_max - frame_rows - border
+    elif row + rows_direction <= 0:
+        row = border
+    else:
         row += rows_direction
+
+    if column + columns_direction + frame_cols >= col_max:
+        column = col_max - frame_cols - border
+    elif column + columns_direction <= 0:
+        column = border
+    else:
         column += columns_direction
 
     return row, column
@@ -53,18 +63,14 @@ async def animate_spaceship(canvas, row, column, frame1, frame2, col_max, row_ma
     while True:
 
         curses_tools.draw_frame(canvas, row, column, frame1)
-        for _ in range(5000):
-            await asyncio.sleep(0)
+        await sleep(2)
 
         curses_tools.draw_frame(canvas, row, column, frame1, negative=True)
-        await asyncio.sleep(0)
 
         curses_tools.draw_frame(canvas, row, column, frame2)
-        for _ in range(5000):
-            await asyncio.sleep(0)
+        await sleep(1)
 
         curses_tools.draw_frame(canvas, row, column, frame2, negative=True)
-        await asyncio.sleep(0)
 
         row, column = run_spaceship(canvas, row, frame1, column, col_max, row_max)
 
@@ -76,27 +82,31 @@ def main(canvas):
     frame1 = get_rocket_frame('rocket_frame_1.txt')
     frame2 = get_rocket_frame('rocket_frame_2.txt')
     coroutines = [
-        fire_animation.fire(canvas, row, column+2, rows_speed=-0.003),
+        fire_animation.fire(canvas, row, column+2, rows_speed=-0.3),
         animate_spaceship(canvas, row, column, frame1, frame2, col_max, row_max)
     ]
     for star in range(50):
         coroutines.append(blink(
             canvas, random.randint(1, row_max-2),
             random.randint(1, col_max-2),
-            random.randint(1, 10000),
+            random.randint(1, 10),
             symbol=random.choice(stars)
-
         ))
     canvas.border()
+    canvas.nodelay(True)
     curses.curs_set(False)
     while True:
 
         for coroutine in coroutines:
             try:
                 coroutine.send(None)
+
             except StopIteration:
                 coroutines.remove(coroutine)
+
         canvas.refresh()
+        canvas.border()
+        time.sleep(TIC_TIMEOUT)
 
 
 if __name__ == '__main__':
