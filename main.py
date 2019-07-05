@@ -4,6 +4,7 @@ import random
 import fire_animation
 import curses_tools
 import time
+from space_garbage import fly_garbage
 
 
 TIC_TIMEOUT = .1
@@ -31,7 +32,7 @@ async def blink(canvas, row, column, offset_tics, symbol):
         await sleep(.3)
 
 
-def get_rocket_frame(file):
+def get_frame(file):
     with open(file, "r") as my_file:
         file_content = my_file.read()
     return file_content
@@ -79,11 +80,13 @@ def main(canvas):
     row_max, col_max = canvas.getmaxyx()
     row, column = row_max/2, col_max/2
     stars = ('+', '*', '.', ':')
-    frame1 = get_rocket_frame('rocket_frame_1.txt')
-    frame2 = get_rocket_frame('rocket_frame_2.txt')
+    rocket_frame1 = get_frame('rocket_frame_1.txt')
+    rocket_frame2 = get_frame('rocket_frame_2.txt')
+    garbage_frame = get_frame('hubble.txt')
     coroutines = [
         fire_animation.fire(canvas, row, column+2, rows_speed=-0.3),
-        animate_spaceship(canvas, row, column, frame1, frame2, col_max, row_max)
+        animate_spaceship(canvas, row, column, rocket_frame1, rocket_frame2, col_max, row_max),
+        fly_garbage(canvas, 10, garbage_frame)
     ]
     for star in range(50):
         coroutines.append(blink(
