@@ -4,10 +4,12 @@ import random
 import fire_animation
 import curses_tools
 import time
-from space_garbage import fly_garbage
+from space_garbage import fill_orbit_with_garbage
+import os
 
 
 TIC_TIMEOUT = .1
+coroutines = []
 
 
 async def sleep(tics):
@@ -32,10 +34,15 @@ async def blink(canvas, row, column, offset_tics, symbol):
         await sleep(.3)
 
 
-def get_frame(file):
-    with open(file, "r") as my_file:
-        file_content = my_file.read()
-    return file_content
+def get_frames(frames_dir):
+    frames = []
+
+    for file in os.listdir(f"images/{frames_dir}"):
+        with open(f"images/{frames_dir}/{file}", "r") as my_file:
+            frame = my_file.read()
+            frames.append(frame)
+
+    return frames
 
 
 def run_spaceship(canvas, row, frame1, column, col_max, row_max):
@@ -80,14 +87,19 @@ def main(canvas):
     row_max, col_max = canvas.getmaxyx()
     row, column = row_max/2, col_max/2
     stars = ('+', '*', '.', ':')
-    rocket_frame1 = get_frame('rocket_frame_1.txt')
-    rocket_frame2 = get_frame('rocket_frame_2.txt')
-    garbage_frame = get_frame('hubble.txt')
-    coroutines = [
-        fire_animation.fire(canvas, row, column+2, rows_speed=-0.3),
-        animate_spaceship(canvas, row, column, rocket_frame1, rocket_frame2, col_max, row_max),
-        fly_garbage(canvas, 10, garbage_frame)
-    ]
+    rocket_frame1, rocket_frame2 = get_frames('rocket')
+    garbage_frames = get_frames('garbage')
+    coroutines.append(fire_animation.fire(canvas, row, column+2))
+    coroutines.append(animate_spaceship(
+        canvas,
+        row,
+        column,
+        rocket_frame1,
+        rocket_frame2,
+        col_max,
+        row_max
+    ))
+
     for star in range(50):
         coroutines.append(blink(
             canvas, random.randint(1, row_max-2),
@@ -95,6 +107,7 @@ def main(canvas):
             random.randint(1, 10),
             symbol=random.choice(stars)
         ))
+
     canvas.border()
     canvas.nodelay(True)
     curses.curs_set(False)
@@ -103,10 +116,13 @@ def main(canvas):
         for coroutine in coroutines:
             try:
                 coroutine.send(None)
-
             except StopIteration:
                 coroutines.remove(coroutine)
-
+        coroutines.append(fill_orbit_with_garbage(
+            canvas,
+            random.randint(1, col_max-2),
+            random.choice(garbage_frames)
+        ))
         canvas.refresh()
         canvas.border()
         time.sleep(TIC_TIMEOUT)
