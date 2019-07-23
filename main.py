@@ -4,17 +4,15 @@ import random
 import fire_animation
 import curses_tools
 import time
-from space_garbage import fill_orbit_with_garbage
-import os
+from space_garbage import obstacles, obstacles_in_last_collisions, count_garbage_amount
+from config import get_frames, coroutines, sleep, TIC_TIMEOUT, show_gameover
+from physics import update_speed
+from explosion import explode
+from game_scenario import PHRASES
 
 
-TIC_TIMEOUT = .1
-coroutines = []
-
-
-async def sleep(tics):
-    for _ in range(int(tics)):
-        await asyncio.sleep(0)
+spaceship_frame = get_frames('rocket')[0]
+gameover_frame = get_frames('gameover')[0]
 
 
 async def blink(canvas, row, column, offset_tics, symbol):
@@ -34,70 +32,83 @@ async def blink(canvas, row, column, offset_tics, symbol):
         await sleep(.3)
 
 
-def get_frames(frames_dir):
-    frames = []
-
-    for file in os.listdir(f"images/{frames_dir}"):
-        with open(f"images/{frames_dir}/{file}", "r") as my_file:
-            frame = my_file.read()
-            frames.append(frame)
-
-    return frames
-
-
-def run_spaceship(canvas, row, frame1, column, col_max, row_max):
+async def run_spaceship(canvas, row, column, col_max, row_max):
     border = 1
-    rows_direction, columns_direction, _ = curses_tools.read_controls(canvas)
-    frame_rows, frame_cols = curses_tools.get_frame_size(frame1)
-
-    if row + rows_direction + frame_rows >= row_max:
-        row = row_max - frame_rows - border
-    elif row + rows_direction <= 0:
-        row = border
-    else:
-        row += rows_direction
-
-    if column + columns_direction + frame_cols >= col_max:
-        column = col_max - frame_cols - border
-    elif column + columns_direction <= 0:
-        column = border
-    else:
-        column += columns_direction
-
-    return row, column
-
-
-async def animate_spaceship(canvas, row, column, frame1, frame2, col_max, row_max):
+    frame_rows, frame_cols = curses_tools.get_frame_size(spaceship_frame)
+    row_speed = column_speed = 0
     while True:
+        rows_direction, columns_direction, space = curses_tools.read_controls(canvas)
+        row_speed, column_speed = update_speed(
+            row_speed,
+            column_speed,
+            rows_direction,
+            columns_direction
+        )
 
-        curses_tools.draw_frame(canvas, row, column, frame1)
-        await sleep(2)
+        if row + row_speed + frame_rows >= row_max:
+            row = row_max - frame_rows - border
+        elif row + row_speed <= 0:
+            row = border
+        else:
+            row += row_speed
 
-        curses_tools.draw_frame(canvas, row, column, frame1, negative=True)
+        if column + column_speed + frame_cols >= col_max:
+            column = col_max - frame_cols - border
+        elif column + column_speed <= 0:
+            column = border
+        else:
+            column += column_speed
 
-        curses_tools.draw_frame(canvas, row, column, frame2)
-        await sleep(1)
+        if space:
+            coroutines.append(fire_animation.fire(canvas, row, column+2))
 
-        curses_tools.draw_frame(canvas, row, column, frame2, negative=True)
+        for obstacle in obstacles:
+            if obstacle.has_collision(row, column):
+                await explode(canvas, row, column)
+                coroutines.append(show_gameover(
+                    canvas,
+                    row,
+                    column,
+                    gameover_frame
+                ))
+                return
 
-        row, column = run_spaceship(canvas, row, frame1, column, col_max, row_max)
+        curses_tools.draw_frame(canvas, row, column, spaceship_frame)
+        old_frame = spaceship_frame
+        await asyncio.sleep(0)
+        curses_tools.draw_frame(canvas, row, column, old_frame, negative=True)
+
+
+async def animate_spaceship(spaceship_frames):
+    global spaceship_frame
+    while True:
+        for frame in spaceship_frames:
+            spaceship_frame = frame
+            await asyncio.sleep(0)
 
 
 def main(canvas):
+    global coroutines
     row_max, col_max = canvas.getmaxyx()
     row, column = row_max/2, col_max/2
+    info_zone = canvas.derwin(row_max - 4, col_max - 60)
     stars = ('+', '*', '.', ':')
-    rocket_frame1, rocket_frame2 = get_frames('rocket')
+    spaceship_frames = get_frames('rocket')
     garbage_frames = get_frames('garbage')
-    coroutines.append(fire_animation.fire(canvas, row, column+2))
-    coroutines.append(animate_spaceship(
+    coroutines.append(animate_spaceship(spaceship_frames))
+    coroutines.append(run_spaceship(
         canvas,
         row,
         column,
-        rocket_frame1,
-        rocket_frame2,
         col_max,
         row_max
+    ))
+    coroutines.append(count_garbage_amount(
+        canvas,
+        coroutines,
+        row_max,
+        col_max,
+        garbage_frames
     ))
 
     for star in range(50):
@@ -107,23 +118,19 @@ def main(canvas):
             random.randint(1, 10),
             symbol=random.choice(stars)
         ))
-
+    info_zone.border()
     canvas.border()
     canvas.nodelay(True)
     curses.curs_set(False)
     while True:
-
         for coroutine in coroutines:
             try:
                 coroutine.send(None)
             except StopIteration:
                 coroutines.remove(coroutine)
-        coroutines.append(fill_orbit_with_garbage(
-            canvas,
-            random.randint(1, col_max-2),
-            random.choice(garbage_frames)
-        ))
         canvas.refresh()
+        info_zone.refresh()
+        info_zone.border()
         canvas.border()
         time.sleep(TIC_TIMEOUT)
 

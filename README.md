@@ -1,7 +1,8 @@
 # Console game
 
 This is a small game which made with help of asyncio module.
-After it started you can use navigation keys to move a spaceship via gameboard.
+After it started you can use navigation keys to move a spaceship via gameboard and SPACE to shoot.
+You need to avoid collisions with space garbage.
 
 ## How to install
 
