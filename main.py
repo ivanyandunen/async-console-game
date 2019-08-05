@@ -9,8 +9,8 @@ from config import TIC_TIMEOUT
 from physics import update_speed
 from explosion import explode
 from game_scenario import PHRASES, show_gameover
-from globs import coroutines, year
 from auxiliary import get_frames, sleep
+import globs
 
 
 spaceship_frame = get_frames('rocket')[0]
@@ -61,13 +61,13 @@ async def run_spaceship(canvas, row, column, col_max, row_max):
         else:
             column += column_speed
 
-        if space and year >= 2020:
-            coroutines.append(fire_animation.fire(canvas, row, column+2))
+        if space and globs.year >= 2020:
+            globs.coroutines.append(fire_animation.fire(canvas, row, column+2))
 
         for obstacle in obstacles:
             if obstacle.has_collision(row, column):
                 await explode(canvas, row, column)
-                coroutines.append(show_gameover(
+                globs.coroutines.append(show_gameover(
                     canvas,
                     row,
                     column,
@@ -90,31 +90,29 @@ async def animate_spaceship(spaceship_frames):
 
 
 def main(canvas):
-    global coroutines, year
     row_max, col_max = canvas.getmaxyx()
     row, column = row_max/2, col_max/2
     info_zone = canvas.derwin(row_max - 4, col_max - 60)
     stars = ('+', '*', '.', ':')
     spaceship_frames = get_frames('rocket')
     garbage_frames = get_frames('garbage')
-    coroutines.append(animate_spaceship(spaceship_frames))
-    coroutines.append(run_spaceship(
+    globs.coroutines.append(animate_spaceship(spaceship_frames))
+    globs.coroutines.append(run_spaceship(
         canvas,
         row,
         column,
         col_max,
         row_max
     ))
-    coroutines.append(show_message(canvas, row_max, col_max))
-    coroutines.append(fill_orbit_with_garbage(
+    globs.coroutines.append(show_message(canvas, row_max, col_max))
+    globs.coroutines.append(fill_orbit_with_garbage(
         canvas,
-        coroutines,
         col_max,
         garbage_frames
     ))
 
     for star in range(50):
-        coroutines.append(blink(
+        globs.coroutines.append(blink(
             canvas, random.randint(1, row_max-2),
             random.randint(1, col_max-2),
             random.randint(1, 10),
@@ -125,12 +123,12 @@ def main(canvas):
     canvas.nodelay(True)
     curses.curs_set(False)
     while True:
-        for coroutine in coroutines:
+        for coroutine in globs.coroutines:
             try:
                 coroutine.send(None)
             except StopIteration:
-                coroutines.remove(coroutine)
-        year += 1
+                globs.coroutines.remove(coroutine)
+        globs.year += .1
         canvas.refresh()
         info_zone.refresh()
         info_zone.border()

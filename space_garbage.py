@@ -5,7 +5,7 @@ from auxiliary import sleep
 from explosion import explode
 from game_scenario import get_garbage_delay_tics, PHRASES
 import random
-from globs import coroutines, year
+import globs
 
 
 obstacles = []
@@ -44,27 +44,25 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
 
 async def show_message(canvas, row_max, col_max):
     info_zone = canvas.derwin(row_max - 4, col_max - 60)
-    phrase = PHRASES[year]
+    phrase = PHRASES[globs.year]
     x, y = info_zone.getmaxyx()
     while True:
-        if PHRASES.get(year):
-            phrase = PHRASES[year]
-            info_zone.addstr(x - 2, y - 50, f'Year: {year}  {phrase}')
+        if PHRASES.get(globs.year):
+            phrase = PHRASES[globs.year]
+            info_zone.addstr(x - 2, y - 50, f'Year: {int(globs.year)}  {phrase}')
         else:
-            info_zone.addstr(x - 2, y - 50, f'Year: {year}  {phrase}')
+            info_zone.addstr(x - 2, y - 50, f'Year: {int(globs.year)}  {phrase}')
         await asyncio.sleep(0)
 
 
-async def fill_orbit_with_garbage(canvas, coroutines,  col_max, garbage_frames):
-    global year
-    print(year)
+async def fill_orbit_with_garbage(canvas, col_max, garbage_frames):
     while True:
-        delay = get_garbage_delay_tics(year)
+        delay = get_garbage_delay_tics(globs.year)
         if delay:
             await sleep(delay)
         else:
-            await sleep(0)
-        coroutines.append(fly_garbage(
+            await sleep(25)
+        globs.coroutines.append(fly_garbage(
             canvas,
             random.randint(1, col_max-2),
             random.choice(garbage_frames)
