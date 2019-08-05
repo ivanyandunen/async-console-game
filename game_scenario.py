@@ -1,3 +1,7 @@
+import asyncio
+from curses_tools import draw_frame
+
+
 PHRASES = {
     1957: "First Sputnik",
     1961: "Gagarin flew!",
@@ -25,3 +29,10 @@ def get_garbage_delay_tics(year):
         return 6
     else:
         return 2
+
+
+async def show_gameover(canvas, row, column, frame):
+    while True:
+        draw_frame(canvas, row, column, frame)
+        await asyncio.sleep(0)
+        draw_frame(canvas, row, column, frame, negative=True)

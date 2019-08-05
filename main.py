@@ -4,11 +4,13 @@ import random
 import fire_animation
 import curses_tools
 import time
-from space_garbage import obstacles, obstacles_in_last_collisions, count_garbage_amount
-from config import get_frames, coroutines, sleep, TIC_TIMEOUT, show_gameover
+from space_garbage import obstacles, obstacles_in_last_collisions, fill_orbit_with_garbage, show_message
+from config import TIC_TIMEOUT
 from physics import update_speed
 from explosion import explode
-from game_scenario import PHRASES
+from game_scenario import PHRASES, show_gameover
+from globs import coroutines, year
+from auxiliary import get_frames, sleep
 
 
 spaceship_frame = get_frames('rocket')[0]
@@ -59,7 +61,7 @@ async def run_spaceship(canvas, row, column, col_max, row_max):
         else:
             column += column_speed
 
-        if space:
+        if space and year >= 2020:
             coroutines.append(fire_animation.fire(canvas, row, column+2))
 
         for obstacle in obstacles:
@@ -88,7 +90,7 @@ async def animate_spaceship(spaceship_frames):
 
 
 def main(canvas):
-    global coroutines
+    global coroutines, year
     row_max, col_max = canvas.getmaxyx()
     row, column = row_max/2, col_max/2
     info_zone = canvas.derwin(row_max - 4, col_max - 60)
@@ -103,10 +105,10 @@ def main(canvas):
         col_max,
         row_max
     ))
-    coroutines.append(count_garbage_amount(
+    coroutines.append(show_message(canvas, row_max, col_max))
+    coroutines.append(fill_orbit_with_garbage(
         canvas,
         coroutines,
-        row_max,
         col_max,
         garbage_frames
     ))
@@ -128,6 +130,7 @@ def main(canvas):
                 coroutine.send(None)
             except StopIteration:
                 coroutines.remove(coroutine)
+        year += 1
         canvas.refresh()
         info_zone.refresh()
         info_zone.border()

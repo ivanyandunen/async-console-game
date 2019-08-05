@@ -1,6 +1,6 @@
 # Console game
 
-This is a small game which made with help of asyncio module.
+This is a small console game where you can control a spaseship.
 After it started you can use navigation keys to move a spaceship via gameboard and SPACE to shoot.
 You need to avoid collisions with space garbage.
 
